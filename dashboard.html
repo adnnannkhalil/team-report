@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Reporting App Prototype</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+        const { useState, useEffect } = React;
+        
+        // Lucide Icons Wrapper
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const LucideIcons = window.lucide ? window.lucide.icons : {};
+            const IconComponent = LucideIcons[name];
+            // Render SVG directly if lucide.icons is not available as React components in this build
+            // Fallback to simple feather icons style data-lucide attributes if needed, 
+            // but for this standalone script, we'll try to map names.
+            // Note: The UMD build of lucide usually exposes createIcons but not direct React components easily without a specific react-lucide UMD.
+            // FIX: We will use a simple mapping or just text for icons to ensure it runs without complex build steps, 
+            // OR better: use the SVG strings directly for a robust standalone file.
+            // ACTUALLY: Let's use a simpler approach. I will replace the Icon components in the code below with standard HTML/SVG elements 
+            // or use a CDN that provides React components for icons. 
+            // TO KEEP IT SIMPLE & ROBUST: I will replace the Lucide React components with simple SVGs in the code below.
+            return <span className={className}>[Icon]</span>;
+        };
+
+        // --- SVGs for Icons (Replacing Lucide React for Standalone Compatibility) ---
+        const Icons = {
+            LayoutDashboard: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg>,
+            PenTool: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>,
+            Settings: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+            CheckCircle2: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            XCircle: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>,
+            Plus: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            Save: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            User: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            ArrowRight: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            BarChart3: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
+            Trash2: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+            ChevronDown: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>,
+            Calendar: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+            Target: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+            ShieldCheck: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>,
+            AlertCircle: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Building2: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>,
+            MessageSquare: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+            AlertTriangle: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>,
+            Clock: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            ListTodo: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>,
+            Send: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+            Cloud: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17.5 19c0-3.037-2.463-5.5-5.5-5.5S6.5 15.963 6.5 19"/><path d="M20 19c0-3.59-2.686-6.5-6-6.5S8 15.41 8 19"/><path d="M13 10V3"/><path d="M13 3L9 7"/><path d="M13 3l4 4"/></svg>,
+            Loader2: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        };
+
+        // Destructure icons for use
+        const { 
+            LayoutDashboard, PenTool, Settings, CheckCircle2, XCircle, Plus, Save, 
+            User, ArrowRight, BarChart3, Trash2, ChevronDown, Calendar, Target, 
+            ShieldCheck, AlertCircle, Building2, MessageSquare, AlertTriangle, 
+            Clock, ListTodo, Send, Cloud, Loader2 
+        } = Icons;
+
+        // --- APP CODE (Pasted from latest iteration) ---
+        
+        // --- MOCK DATA ---
+        const DEPARTMENTS = [
+          { id: 'd1', name: 'Marketing', manager: 'sarah@company.com' },
+          { id: 'd2', name: 'Engineering', manager: 'mike@company.com' },
+          { id: 'd3', name: 'Sales', manager: 'jessica@company.com' }
+        ];
+
+        const VENDORS = [
+          { id: 'v1', name: 'AWS' },
+          { id: 'v2', name: 'Salesforce' },
+          { id: 'v3', name: 'HubSpot' },
+          { id: 'v4', name: 'Agency X' }
+        ];
+
+        const INITIAL_DROPDOWNS = {
+          completion_reason: [{ id: '1', label: 'On Schedule' }, { id: '2', label: 'Ahead of Schedule' }],
+          delay_reason: [{ id: '1', label: 'Resource Constrained' }, { id: '2', label: 'External Dependency' }],
+          achievement_reason: [
+            'Completed as planned',
+            'Completed ahead of schedule',
+            'Required extra resources',
+            'Improved communication',
+            'High clarity'
+          ],
+          // POINT #10: Impact Categories
+          achievement_impact: [
+            'Improved Efficiency',
+            'Reduced Costs',
+            'Company Growth',
+            'Strategic Feature',
+            'Company Resilience',
+            'Safeguarding Company'
+          ],
+          blocker_type: [
+            'Internal dependency',
+            'Waiting for 3rd party vendor',
+            'Technical limitation',
+            'Miscommunication',
+            'Priority change'
+          ]
+        };
+
+        const INITIAL_KPI_TEMPLATES = {
+          'd1': [
+            { id: 't1', title: 'Annual Revenue', target: '$5M', targetDate: '2023-12-31', createdAt: '2023-01-01' },
+            { id: 't2', title: 'Brand Awareness', target: '40% Reach', targetDate: '2024-06-30', createdAt: '2023-06-01' }
+          ],
+          'd2': [
+            { id: 't3', title: 'System Uptime', target: '99.99%', targetDate: '2023-12-31', createdAt: '2023-01-01' }
+          ]
+        };
+
+        const INITIAL_METRIC_TEMPLATES = {
+          'd1': [ 
+            { id: 'm1', label: 'Weekly Leads', isTemplate: true },
+            { id: 'm2', label: 'Ad Spend', isTemplate: true }
+          ],
+          'd2': [ 
+            { id: 'm3', label: 'Bugs Closed', isTemplate: true },
+            { id: 'm4', label: 'Deployment Success Rate', isTemplate: true }
+          ]
+        };
+
+        const INITIAL_GOALS = [
+          { 
+            id: 'g1', 
+            deptId: 'd1', 
+            description: 'Launch Q4 Ad Campaign', 
+            status: 'Planned', 
+            plannedDate: '2023-11-20', 
+            reason: '', 
+            blockingTeams: [], 
+            comment: '' 
+          },
+          { 
+            id: 'g2', 
+            deptId: 'd1', 
+            description: 'Update Landing Page Copy', 
+            status: 'Planned', 
+            plannedDate: '2023-11-20', 
+            reason: '', 
+            blockingTeams: [], 
+            comment: '' 
+          }
+        ];
+
+        const INITIAL_REPORTS = [
+            {
+              id: 'r1',
+              deptId: 'd1',
+              weekStartDate: '2023-11-27',
+              kpiGoals: [
+                  { id: 't1', title: 'Annual Revenue', target: '$5M', targetDate: '2023-12-31', currentValue: '$4.2M', status: 'On Track', isTemplate: true, comment: 'Slight dip due to churn' },
+                  { id: 't2', title: 'Brand Awareness', target: '40% Reach', targetDate: '2024-06-30', currentValue: '35%', status: 'At Risk', isTemplate: true }
+              ],
+              achievements: [
+                  { id: 'a1', description: 'Launched Holiday Ads', reason: 'Completed ahead of schedule', impact: 'Company Growth', comment: 'Great team effort.' }
+              ],
+              blockers: [
+                  { id: 'b1', description: 'Waiting on API', type: 'Internal dependency', blockedBy: 'Engineering', comment: 'Critical path.' }
+              ],
+              manualMetrics: [
+                  { id: 'm1', label: 'Weekly Leads', value: '450', isTemplate: true}, 
+                  { id: 'adhoc1', label: 'Churn', value: '1.2%', isTemplate: false}
+              ],
+              nextWeekGoals: [
+                  { id: 'nw1', text: 'Optimize Ad Spend' },
+                  { id: 'nw2', text: 'Hire new Copywriter' }
+              ],
+              comments: [
+                  { id: 'c1', author: 'CEO', role: 'CEO', text: 'Great work on the ads launch! Can we push harder on churn?', timestamp: '2 days ago' },
+                  { id: 'c2', author: 'Sarah', role: 'Manager', text: 'Thanks! Yes, churn is priority #1 for next week.', timestamp: '1 day ago' }
+              ]
+            }
+        ]; 
+
+        function App() {
+          const [activeView, setActiveView] = useState('manager');
+          const [currentUser, setCurrentUser] = useState(DEPARTMENTS[0]); 
+          const [reports, setReports] = useState(INITIAL_REPORTS);
+          const [goals, setGoals] = useState(INITIAL_GOALS);
+          const [templates, setTemplates] = useState(INITIAL_KPI_TEMPLATES);
+          const [metricTemplates, setMetricTemplates] = useState(INITIAL_METRIC_TEMPLATES); 
+          const [dropdowns, setDropdowns] = useState(INITIAL_DROPDOWNS);
+          const [departments, setDepartments] = useState(DEPARTMENTS);
+          const [vendors, setVendors] = useState(VENDORS);
+
+          // Helper to add a comment to a report
+          const addComment = (reportId, text, role) => {
+              const newComment = {
+                  id: Math.random().toString(),
+                  author: role === 'CEO' ? 'CEO' : currentUser.name.split('@')[0], 
+                  role: role,
+                  text: text,
+                  timestamp: 'Just now'
+              };
+              
+              setReports(prev => prev.map(r => {
+                  if (r.id === reportId) {
+                      return { ...r, comments: [...(r.comments || []), newComment] };
+                  }
+                  return r;
+              }));
+          };
+
+          return (
+            <div className="flex h-screen bg-slate-50 font-sans text-slate-800">
+              {/* Sidebar */}
+              <div className="w-64 bg-slate-900 text-white flex flex-col shadow-xl flex-shrink-0">
+                <div className="p-6 border-b border-slate-700">
+                  <h1 className="text-xl font-bold tracking-tight">PerfReport<span className="text-blue-400">.io</span></h1>
+                  <p className="text-xs text-slate-400 mt-1">Full 10-Point Implementation</p>
+                </div>
+                <nav className="flex-1 p-4 space-y-2">
+                  <SidebarItem icon={<PenTool size={18} />} label="Manager Report" active={activeView === 'manager'} onClick={() => setActiveView('manager')} />
+                  <SidebarItem icon={<LayoutDashboard size={18} />} label="CEO Dashboard" active={activeView === 'ceo'} onClick={() => setActiveView('ceo')} />
+                  <SidebarItem icon={<Settings size={18} />} label="Admin Settings" active={activeView === 'admin'} onClick={() => setActiveView('admin')} />
+                </nav>
+                
+                <div className="p-4 bg-slate-800 border-t border-slate-700">
+                  <label className="text-xs uppercase text-slate-400 font-semibold mb-2 block">Simulate User:</label>
+                  <select 
+                    className="w-full bg-slate-700 border-none rounded text-sm p-2 text-white outline-none"
+                    value={currentUser.id}
+                    onChange={(e) => setCurrentUser(departments.find(d => d.id === e.target.value))}
+                  >
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <main className="flex-1 overflow-auto bg-slate-50/50 relative">
+                {activeView === 'manager' && (
+                  <ManagerView 
+                    user={currentUser} 
+                    reports={reports}
+                    setReports={setReports}
+                    templates={templates}
+                    metricTemplates={metricTemplates} 
+                    goals={goals}
+                    setGoals={setGoals}
+                    dropdowns={dropdowns}
+                    departments={departments}
+                    setDepartments={setDepartments}
+                    vendors={vendors}
+                    setVendors={setVendors}
+                    onAddComment={addComment}
+                  />
+                )}
+                {activeView === 'ceo' && <CEODashboard departments={departments} reports={reports} goals={goals} onAddComment={addComment} />}
+                {activeView === 'admin' && <AdminView departments={departments} setDepartments={setDepartments} templates={templates} setTemplates={setTemplates} dropdowns={dropdowns} setDropdowns={setDropdowns} vendors={vendors} setVendors={setVendors} metricTemplates={metricTemplates} setMetricTemplates={setMetricTemplates} />}
+              </main>
+            </div>
+          );
+        }
+
+        // ==========================================
+        // VIEW 1: MANAGER
+        // ==========================================
+
+        function ManagerView({ user, reports, setReports, templates, metricTemplates, goals, setGoals, dropdowns, departments, setDepartments, vendors, setVendors, onAddComment }) {
+          // State
+          const [kpiGoals, setKpiGoals] = useState([]);
+          const [isAddingKPI, setIsAddingKPI] = useState(false);
+          const [newKPIData, setNewKPIData] = useState({ title: '', target: '', targetDate: '' });
+          const [achievements, setAchievements] = useState([]);
+          const [blockers, setBlockers] = useState([]);
+          const [manualMetrics, setManualMetrics] = useState([]); 
+          const [nextWeekGoals, setNextWeekGoals] = useState([]); 
+          const [newGoalText, setNewGoalText] = useState('');
+          const [reportId, setReportId] = useState(null); 
+          const [comments, setComments] = useState([]);
+          
+          // Point #9: Autosave State
+          const [saveStatus, setSaveStatus] = useState('saved'); // saved, saving, unsaved
+
+          // Fake Autosave Trigger
+          useEffect(() => {
+              if (saveStatus === 'unsaved') {
+                  setSaveStatus('saving');
+                  const timer = setTimeout(() => {
+                      // In reality, this would be an API call
+                      setSaveStatus('saved');
+                  }, 1000);
+                  return () => clearTimeout(timer);
+              }
+          }, [kpiGoals, achievements, blockers, manualMetrics, nextWeekGoals, saveStatus]);
+
+          // Hook to mark unsaved changes on any edit
+          const markUnsaved = () => setSaveStatus('unsaved');
+
+          const reviewableGoals = goals.filter(g => g.deptId === user.id && (g.status !== 'Cancelled'));
+
+          useEffect(() => {
+            const existing = reports.find(r => r.deptId === user.id && r.weekStartDate === '2023-11-27');
+            if (existing) {
+              setReportId(existing.id); 
+              setKpiGoals(existing.kpiGoals || []);
+              setAchievements(existing.achievements || []); 
+              setBlockers(existing.blockers || []); 
+              setManualMetrics(existing.manualMetrics || []);
+              setNextWeekGoals(existing.nextWeekGoals || []); 
+              setComments(existing.comments || []); 
+            } else {
+              const deptTemplates = templates[user.id] || [];
+              const initializedKPIs = deptTemplates.map(t => ({ ...t, isTemplate: true, currentValue: '', status: 'On Track', comment: '' }));
+              setKpiGoals(initializedKPIs);
+              setAchievements([]); setBlockers([]); 
+              const deptMetricTemplates = metricTemplates[user.id] || [];
+              const initializedMetrics = deptMetricTemplates.map(m => ({ ...m, value: '', isTemplate: true }));
+              setManualMetrics(initializedMetrics);
+              setNextWeekGoals([]);
+              setComments([]);
+            }
+          }, [user.id, reports, templates, metricTemplates]);
+
+          // Handlers (with Autosave Trigger)
+          const handleUpdateGoal = (goalId, updates) => { setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...updates } : g)); markUnsaved(); };
+          const handleAddCustomKPI = () => { if (!newKPIData.title || !newKPIData.target) return; setKpiGoals([...kpiGoals, { id: Math.random().toString(), title: newKPIData.title, target: newKPIData.target, targetDate: newKPIData.targetDate || '2023-12-31', createdAt: new Date().toISOString().split('T')[0], isTemplate: false, currentValue: '', status: 'On Track', comment: '' }]); setIsAddingKPI(false); setNewKPIData({ title: '', target: '', targetDate: '' }); markUnsaved(); };
+          const updateKPI = (id, field, value) => { setKpiGoals(kpiGoals.map(k => k.id === id ? { ...k, [field]: value } : k)); markUnsaved(); };
+          const handleAddAchievement = () => { setAchievements([...achievements, { id: Math.random().toString(), description: '', reason: '', impact: '', comment: '' }]); markUnsaved(); };
+          const updateAchievement = (id, field, value) => { setAchievements(achievements.map(a => a.id === id ? { ...a, [field]: value } : a)); markUnsaved(); };
+          const removeAchievement = (id) => { setAchievements(achievements.filter(a => a.id !== id)); markUnsaved(); };
+          const handleAddBlocker = () => { setBlockers([...blockers, { id: Math.random().toString(), description: '', type: '', blockedBy: '', comment: '' }]); markUnsaved(); };
+          const updateBlocker = (id, field, value) => { if (field === 'blockedBy' && value === '__ADD_NEW__') { const newItem = prompt("Enter Name:"); if (newItem) { const currentBlocker = blockers.find(b => b.id === id); if (currentBlocker.type === 'Internal dependency') { const newDept = { id: Math.random().toString(), name: newItem, manager: 'Unassigned' }; setDepartments([...departments, newDept]); value = newItem; } else if (currentBlocker.type === 'Waiting for 3rd party vendor') { const newVendor = { id: Math.random().toString(), name: newItem }; setVendors([...vendors, newVendor]); value = newItem; } } else { return; } } setBlockers(blockers.map(b => { if (b.id !== id) return b; if (field === 'type') { return { ...b, [field]: value, blockedBy: '' }; } return { ...b, [field]: value }; })); markUnsaved(); };
+          const removeBlocker = (id) => { setBlockers(blockers.filter(b => b.id !== id)); markUnsaved(); };
+          const handleAddNextWeekGoal = () => { if (!newGoalText) return; setNextWeekGoals([...nextWeekGoals, { id: Math.random().toString(), text: newGoalText }]); setNewGoalText(''); markUnsaved(); };
+          
+          const handleSubmit = () => { 
+              const report = { id: reportId || Math.random().toString(), deptId: user.id, weekStartDate: '2023-11-27', kpiGoals, achievements, blockers, manualMetrics, nextWeekGoals, comments }; 
+              setReports(prev => [...prev.filter(r => r.deptId !== user.id), report]); 
+              alert("Report Submitted!"); 
+          };
+          const blockingTeamOptions = departments.filter(d => d.id !== user.id).map(d => ({ value: d.name, label: d.name }));
+
+          return (
+            <div className="p-8 max-w-6xl mx-auto space-y-8 pb-20">
+              <header className="flex justify-between items-center sticky top-0 bg-slate-50/95 backdrop-blur z-10 py-4 border-b border-slate-200 -mx-8 px-8">
+                <div><h2 className="text-2xl font-bold text-slate-800">Weekly Performance Report</h2><p className="text-slate-500">Week of Nov 27, 2023 • {user.name}</p></div>
+                <div className="flex items-center gap-4">
+                    {/* Point #9: Autosave Indicator */}
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+                        {saveStatus === 'saving' ? <><Loader2 size={14} className="animate-spin text-blue-500"/> Saving...</> : saveStatus === 'saved' ? <><Cloud size={14} className="text-green-500"/> Draft Saved</> : <span className="text-orange-400">Unsaved changes</span>}
+                    </div>
+                    <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-all hover:shadow-md"><Save size={18} /> Submit Report</button>
+                </div>
+              </header>
+
+              {/* KPI Section */}
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Target className="text-blue-600" size={22} /> Department KPI Goals</h3><button onClick={() => setIsAddingKPI(true)} className="text-sm text-blue-600 font-medium hover:bg-blue-50 px-3 py-1.5 rounded transition-colors flex items-center gap-1"><Plus size={16}/> Add Custom Goal</button></div>
+                {isAddingKPI && (<div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-6 flex flex-col md:flex-row gap-3 items-end"><div className="flex-1 w-full"><label className="text-[10px] uppercase font-bold text-slate-400">Goal Title</label><input className="w-full text-sm p-2 border border-slate-300 rounded" placeholder="e.g. Q4 Hiring" value={newKPIData.title} onChange={e => setNewKPIData({...newKPIData, title: e.target.value})} /></div><div className="w-32"><label className="text-[10px] uppercase font-bold text-slate-400">Target</label><input className="w-full text-sm p-2 border border-slate-300 rounded" placeholder="e.g. 5" value={newKPIData.target} onChange={e => setNewKPIData({...newKPIData, target: e.target.value})} /></div><div className="w-40"><label className="text-[10px] uppercase font-bold text-slate-400">Date</label><input type="date" className="w-full text-sm p-2 border border-slate-300 rounded" value={newKPIData.targetDate} onChange={e => setNewKPIData({...newKPIData, targetDate: e.target.value})} /></div><button onClick={handleAddCustomKPI} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Add</button><button onClick={() => setIsAddingKPI(false)} className="text-slate-500 px-3 py-2 text-sm">Cancel</button></div>)}
+                <div className="space-y-4">{kpiGoals.map((kpi) => (<div key={kpi.id} className="p-4 border border-slate-200 rounded-lg bg-slate-50/50 hover:bg-slate-50 transition-colors"><div className="flex justify-between items-start mb-3 border-b border-slate-200 pb-3"><div><div className="font-bold text-slate-800 flex items-center gap-2 text-base">{kpi.title}{kpi.isTemplate && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold tracking-wide"><ShieldCheck size={10}/> TEMPLATE</span>}</div><div className="text-xs text-slate-500 mt-1 flex gap-3"><span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-mono">Target: {kpi.target}</span><span>By: {kpi.targetDate}</span></div></div>{!kpi.isTemplate && <button onClick={() => setKpiGoals(kpiGoals.filter(k => k.id !== kpi.id))} className="text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>}</div><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Status</label><select className={`w-full text-sm p-2 border rounded font-medium outline-none transition-colors ${kpi.status === 'On Track' ? 'border-green-300 bg-green-50 text-green-700' : kpi.status === 'At Risk' ? 'border-yellow-300 bg-yellow-50 text-yellow-700' : 'border-red-300 bg-red-50 text-red-700'}`} value={kpi.status} onChange={(e) => updateKPI(kpi.id, 'status', e.target.value)}><option value="On Track">On Track</option><option value="At Risk">At Risk</option><option value="Off Track">Off Track</option></select></div><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Current Progress</label><input className="w-full text-sm p-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none" placeholder="e.g. $1.2M" value={kpi.currentValue} onChange={(e) => updateKPI(kpi.id, 'currentValue', e.target.value)} /></div><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Comment</label><input className="w-full text-sm p-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Context..." value={kpi.comment} onChange={(e) => updateKPI(kpi.id, 'comment', e.target.value)} /></div></div></div>))}</div>
+              </section>
+
+              {/* Review Last Week */}
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Calendar className="text-blue-600" size={22} /> Review Last Week's Goals</h3><div className="space-y-4">{reviewableGoals.length === 0 ? (<div className="text-center py-8 bg-slate-50 rounded-lg text-slate-400 border border-slate-100 border-dashed">No pending goals from previous weeks.</div>) : (reviewableGoals.map(goal => (<div key={goal.id} className={`border rounded-lg transition-all duration-200 overflow-hidden ${goal.status === 'Completed' ? 'border-green-200 bg-green-50/30' : goal.status === 'Not Completed' ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}><div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex-1"><div className="font-semibold text-slate-800 text-base">{goal.description}</div><div className="text-xs text-slate-400 mt-1 flex items-center gap-2"><Clock size={12}/> Planned for {goal.plannedDate}</div></div><div className="flex items-center gap-2"><button onClick={() => handleUpdateGoal(goal.id, { status: 'Completed' })} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${goal.status === 'Completed' ? 'bg-green-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}><CheckCircle2 size={16}/> Completed</button><button onClick={() => handleUpdateGoal(goal.id, { status: 'Not Completed' })} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${goal.status === 'Not Completed' ? 'bg-red-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}><XCircle size={16}/> Not Completed</button></div></div>{(goal.status === 'Completed' || goal.status === 'Not Completed' || goal.status === 'Completed with Issues') && (<div className="p-4 border-t border-slate-100 bg-white/50 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">{goal.status === 'Completed' && (<div><label className="text-[10px] uppercase font-bold text-green-600 mb-1 block">Success Factor</label><select className="w-full text-sm border border-slate-200 rounded p-2 outline-none focus:border-green-500 bg-white" value={goal.reason} onChange={(e) => handleUpdateGoal(goal.id, { reason: e.target.value })}><option value="">Select Factor...</option>{dropdowns.completion_reason.map(r => <option key={r.id} value={r.label}>{r.label}</option>)}</select></div>)}{goal.status === 'Not Completed' && (<><div><label className="text-[10px] uppercase font-bold text-red-600 mb-1 block">Reason for Delay</label><select className="w-full text-sm border border-slate-200 rounded p-2 outline-none focus:border-red-500 bg-white" value={goal.reason} onChange={(e) => handleUpdateGoal(goal.id, { reason: e.target.value })}><option value="">Select Reason...</option>{dropdowns.delay_reason.map(r => <option key={r.id} value={r.label}>{r.label}</option>)}</select></div><div><label className="text-[10px] uppercase font-bold text-red-600 mb-1 block">Blocking Team (Optional)</label><MultiSelect options={blockingTeamOptions} selected={goal.blockingTeams || []} onChange={(val) => handleUpdateGoal(goal.id, { blockingTeams: val })} placeholder="Select teams..." /></div></>)}<div className={goal.status === 'Not Completed' ? 'md:col-span-2' : 'md:col-span-1'}><label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Comment</label><input className="w-full text-sm border border-slate-200 rounded p-2 outline-none focus:border-blue-500" placeholder="Add context..." value={goal.comment || ''} onChange={(e) => handleUpdateGoal(goal.id, { comment: e.target.value })} /></div></div>)}</div>)))}</div></section>
+
+              {/* --- SECTION 3: ACHIEVEMENTS (Point #2 & #10) --- */}
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><CheckCircle2 className="text-green-600" size={22} /> Achievements</h3>
+                <p className="text-sm text-slate-500 mb-4">What went well? Please categorize for analytics.</p>
+                <div className="space-y-4">
+                  {achievements.map((item) => (
+                    <div key={item.id} className="border border-green-100 bg-green-50/50 rounded-lg p-4 relative group">
+                      <button onClick={() => removeAchievement(item.id)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
+                      <div className="mb-3"><input className="w-full bg-transparent font-medium text-slate-800 placeholder-slate-400 outline-none" placeholder="Describe the achievement..." value={item.description} onChange={(e) => updateAchievement(item.id, 'description', e.target.value)} /></div>
+                      {/* POINT #10: TWO DROPDOWNS (Reason + Impact) */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Reason</label>
+                            <select className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-green-400" value={item.reason} onChange={(e) => updateAchievement(item.id, 'reason', e.target.value)}>
+                                <option value="">Why it went well?</option>{dropdowns.achievement_reason.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-green-700 block mb-1">Impact Category (Point 10)</label>
+                            <select className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-green-400 font-medium text-green-800" value={item.impact} onChange={(e) => updateAchievement(item.id, 'impact', e.target.value)}>
+                                <option value="">Select Impact...</option>{dropdowns.achievement_impact.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                        <div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Comment</label><input className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-green-400" placeholder="Context..." value={item.comment} onChange={(e) => updateAchievement(item.id, 'comment', e.target.value)} /></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handleAddAchievement} className="mt-4 text-sm text-green-700 font-medium flex items-center gap-1 hover:underline"><Plus size={16} /> Add Achievement</button>
+              </section>
+
+              {/* Blockers Section */}
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6"><h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><XCircle className="text-red-600" size={22} /> Blockers</h3><p className="text-sm text-slate-500 mb-4">Structured reporting for analytics.</p><div className="space-y-4">{blockers.map((item) => (<div key={item.id} className="border border-red-100 bg-red-50/50 rounded-lg p-4 relative group"><button onClick={() => removeBlocker(item.id)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button><div className="mb-3"><input className="w-full bg-transparent font-medium text-slate-800 placeholder-slate-400 outline-none" placeholder="Describe the blocker..." value={item.description} onChange={(e) => updateBlocker(item.id, 'description', e.target.value)} /></div><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Blocker Type</label><select className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-red-400" value={item.type} onChange={(e) => updateBlocker(item.id, 'type', e.target.value)}><option value="">Select Type...</option>{dropdowns.blocker_type.map(t => <option key={t} value={t}>{t}</option>)}</select></div><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">{item.type === 'Internal dependency' ? 'Select Department' : item.type === 'Waiting for 3rd party vendor' ? 'Select Vendor' : 'Dependency'}</label>{item.type === 'Internal dependency' ? (<select className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-red-400 font-medium text-slate-700" value={item.blockedBy} onChange={(e) => updateBlocker(item.id, 'blockedBy', e.target.value)}><option value="">Which team?</option>{departments.filter(d => d.id !== user.id).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}<option value="__ADD_NEW__" className="font-bold text-blue-600">+ Add New Team</option></select>) : item.type === 'Waiting for 3rd party vendor' ? (<select className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-red-400 font-medium text-slate-700" value={item.blockedBy} onChange={(e) => updateBlocker(item.id, 'blockedBy', e.target.value)}><option value="">Which vendor?</option>{vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}<option value="__ADD_NEW__" className="font-bold text-blue-600">+ Add New Vendor</option></select>) : (<input disabled className="w-full text-sm border border-slate-200 rounded p-1.5 bg-slate-100 text-slate-400 italic" placeholder="N/A for this type" />)}</div><div><label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Optional Comment</label><input className="w-full text-sm border border-slate-200 rounded p-1.5 bg-white outline-none focus:border-red-400" placeholder="Context..." value={item.comment} onChange={(e) => updateBlocker(item.id, 'comment', e.target.value)} /></div></div></div>))}</div><button onClick={handleAddBlocker} className="mt-4 text-sm text-red-700 font-medium flex items-center gap-1 hover:underline"><Plus size={16} /> Add Blocker</button></section>
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6"><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 className="text-slate-600" size={22} /> Key Metrics</h3><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">{manualMetrics.map((m, i) => (<div key={i} className={`flex items-center gap-3 p-3 rounded border ${m.isTemplate ? 'bg-slate-50 border-slate-200' : 'bg-white border-blue-200 border-dashed'}`}><div className="flex-1">{m.isTemplate ? (<div className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><ShieldCheck size={10} className="text-slate-400"/> {m.label}</div>) : (<input className="w-full text-xs font-bold uppercase text-slate-700 border-b border-transparent focus:border-blue-300 bg-transparent outline-none" value={m.label} placeholder="METRIC NAME" onChange={(e) => { const update = [...manualMetrics]; update[i].label = e.target.value; setManualMetrics(update); }} />)}<input className="w-full text-lg font-bold text-slate-800 bg-transparent outline-none mt-1 placeholder-slate-300" value={m.value} onChange={(e) => { const update = [...manualMetrics]; update[i].value = e.target.value; setManualMetrics(update); }} placeholder="0" /></div>{!m.isTemplate && (<button onClick={() => setManualMetrics(manualMetrics.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>)}</div>))}<button onClick={() => setManualMetrics([...manualMetrics, {id: Math.random().toString(), label:'', value:'', isTemplate: false}])} className="flex flex-col items-center justify-center p-3 rounded border border-slate-200 border-dashed hover:bg-slate-50 text-slate-400 hover:text-blue-500 transition-colors"><Plus size={20} /><span className="text-xs font-bold mt-1">Add Custom</span></button></div></section>
+              <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6"><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><ArrowRight className="text-purple-600" size={22} /> Next Week's Plan</h3><div className="flex gap-2 mb-4"><input className="flex-1 border border-slate-300 p-2 text-sm rounded focus:ring-1 focus:ring-purple-500 outline-none" placeholder="Add new goal..." value={newGoalText} onChange={e => setNewGoalText(e.target.value)} onKeyDown={e => {if(e.key === 'Enter') handleAddNextWeekGoal()}} /><button onClick={handleAddNextWeekGoal} className="bg-purple-100 px-4 rounded text-purple-700 hover:bg-purple-200"><Plus size={18}/></button></div><ul className="space-y-2">{nextWeekGoals.map(g => (<li key={g.id} className="text-sm p-3 bg-slate-50 border border-slate-100 rounded-md flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></div><span className="font-medium text-slate-700">{g.text}</span></li>))}</ul></section>
+
+              {/* --- POINT #8: THREADED COMMENTS --- */}
+              <section className="bg-slate-50 rounded-xl border border-slate-200 p-6 mt-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><MessageSquare className="text-purple-600" size={22} /> CEO Feedback</h3>
+                <CommentThread comments={comments} onAdd={(text) => onAddComment(reportId, text, 'Manager')} />
+              </section>
+            </div>
+          );
+        }
+
+        // ==========================================
+        // VIEW 2: CEO DASHBOARD
+        // ==========================================
+
+        function CEODashboard({ departments, reports, goals, onAddComment }) {
+          const [selectedWeek, setSelectedWeek] = useState('2023-11-27');
+          const [selectedDeptId, setSelectedDeptId] = useState(null);
+          const weekReports = reports.filter(r => r.weekStartDate === selectedWeek);
+          const submittedCount = weekReports.length;
+          const submissionRate = Math.round((submittedCount / departments.length) * 100);
+          const redFlags = weekReports.reduce((acc, r) => acc + (r.kpiGoals || []).filter(k => k.status === 'Off Track').length, 0);
+          const selectedDept = departments.find(d => d.id === selectedDeptId);
+          const selectedReport = weekReports.find(r => r.deptId === selectedDeptId);
+          const selectedGoalsReview = goals.filter(g => g.deptId === selectedDeptId && g.plannedDate === '2023-11-20'); 
+          const activeBlockersCount = weekReports.reduce((acc, r) => { if (Array.isArray(r.blockers)) return acc + r.blockers.length; return acc + (r.blockers ? 1 : 0); }, 0);
+
+          return (
+            <div className="p-8 max-w-6xl mx-auto h-full flex flex-col relative">
+              <header className="mb-8 flex justify-between items-end">
+                <div><h2 className="text-3xl font-bold text-slate-800 tracking-tight">Executive Dashboard</h2><p className="text-slate-500 mt-1">Performance Overview & KPI Health</p></div>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm"><Calendar size={16} className="text-slate-400" /><span className="text-xs font-bold uppercase text-slate-400">Week Of</span><select className="text-sm font-bold text-slate-800 bg-transparent outline-none cursor-pointer" value={selectedWeek} onChange={(e) => { setSelectedWeek(e.target.value); setSelectedDeptId(null); }} ><option value="2023-11-27">Nov 27, 2023</option></select></div>
+              </header>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"><StatCard title="Submission Rate" value={`${submissionRate}%`} sub={`${submittedCount}/${departments.length} Departments`} color="blue" icon={<CheckCircle2 className="text-blue-500" />} /><StatCard title="KPIs Off Track" value={redFlags} sub="Requires Attention" color="red" icon={<AlertCircle className="text-red-500" />} /><StatCard title="Active Blockers" value={activeBlockersCount} sub="Reported this week" color="orange" icon={<XCircle className="text-orange-500" />} /></div>
+              <div className="flex-1 min-h-0 relative"><div className="absolute inset-0 overflow-auto pb-10 pr-2"><div className="grid grid-cols-1 gap-4">{departments.map(dept => { const report = weekReports.find(r => r.deptId === dept.id); const kpis = report ? (report.kpiGoals || []) : []; return (<div key={dept.id} onClick={() => setSelectedDeptId(dept.id)} className={`bg-white rounded-xl border p-5 cursor-pointer transition-all hover:shadow-md ${selectedDeptId === dept.id ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200'}`}><div className="flex justify-between items-start mb-4"><div><h3 className="font-bold text-lg text-slate-800">{dept.name}</h3><div className="text-xs text-slate-500 flex items-center gap-1 mt-1"><User size={12}/> {dept.manager}</div></div>{report ? (<span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><CheckCircle2 size={12}/> Submitted</span>) : (<span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded-full">Pending</span>)}</div>{kpis.length > 0 ? (<div className="grid grid-cols-1 md:grid-cols-3 gap-3">{kpis.map((kpi, i) => (<div key={i} className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-100"><div className={`w-2 h-2 rounded-full flex-shrink-0 ${kpi.status === 'On Track' ? 'bg-green-500' : kpi.status === 'At Risk' ? 'bg-yellow-500' : 'bg-red-500'}`} /><div className="min-w-0"><div className="text-xs font-semibold truncate text-slate-700">{kpi.title}</div><div className="text-[10px] text-slate-500">{kpi.currentValue || 'No Data'}</div></div></div>))}</div>) : (<div className="text-xs text-slate-400 italic py-2">No KPI data available.</div>)}</div>); })}</div></div>{selectedDeptId && (<><div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-10 transition-opacity" onClick={() => setSelectedDeptId(null)} /><div className="absolute top-0 right-0 h-full w-[800px] bg-white border-l border-slate-200 shadow-2xl flex flex-col z-20 animate-in slide-in-from-right duration-300"><div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><div><h3 className="font-bold text-xl text-slate-800">{selectedDept.name}</h3><div className="text-xs text-slate-500 flex items-center gap-1 mt-1"><span className="uppercase font-bold tracking-wider text-slate-400">Weekly Report</span><span className="w-1 h-1 bg-slate-400 rounded-full"></span>{selectedWeek}</div></div><button onClick={() => setSelectedDeptId(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><XCircle size={24}/></button></div><div className="flex-1 overflow-auto p-8 space-y-8 bg-white">{!selectedReport ? (<div className="h-full flex flex-col items-center justify-center text-slate-400"><div className="bg-slate-50 p-4 rounded-full mb-3"><AlertCircle size={32} className="opacity-50"/></div><p>Report not submitted for this week.</p></div>) : (<><section><h4 className="text-xs uppercase font-bold text-slate-400 mb-3 flex items-center gap-2"><Target size={14}/> KPI Progress</h4><div className="grid grid-cols-2 gap-3">{(selectedReport.kpiGoals || []).map((kpi, i) => (<div key={i} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-sm text-slate-700">{kpi.title}</span><StatusBadge status={kpi.status} /></div><div className="flex items-center gap-4 text-xs text-slate-600 mb-2"><div className="flex flex-col"><span className="text-[10px] uppercase text-slate-400 font-bold">Target</span><span>{kpi.target}</span></div><div className="w-px h-6 bg-slate-200"></div><div className="flex flex-col"><span className="text-[10px] uppercase text-slate-400 font-bold">Actual</span><span className="font-medium text-slate-900">{kpi.currentValue}</span></div></div>{kpi.comment && <div className="text-xs italic text-slate-500 bg-white p-2 rounded border border-slate-100">"{kpi.comment}"</div>}</div>))}</div></section>
+
+              {/* --- CEO VIEW TABLES --- */}
+              <section><h4 className="text-xs uppercase font-bold text-blue-600 mb-3 flex items-center gap-2"><Clock size={14}/> Last Week's Goal Review</h4>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-2 w-1/3">Goal Description</th>
+                        <th className="px-4 py-2 w-24">Status</th>
+                        <th className="px-4 py-2 w-1/4">Reason</th>
+                        <th className="px-4 py-2">Comment</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {selectedGoalsReview.length === 0 ? (<tr><td colSpan="4" className="px-4 py-6 text-center text-slate-400 italic">No goals reviewed.</td></tr>) : (selectedGoalsReview.map(g => (
+                        <tr key={g.id} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3 font-medium text-slate-800">{g.description}</td>
+                          <td className="px-4 py-3"><span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${g.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{g.status}</span></td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">{g.reason || '-'}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs italic">{g.comment || '-'}</td>
+                        </tr>
+                      )))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section><h4 className="text-xs uppercase font-bold text-green-600 mb-3 flex items-center gap-2"><CheckCircle2 size={14}/> Achievements</h4>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                      <tr><th className="px-4 py-2 w-1/3">Description</th><th className="px-4 py-2 w-1/4">Reason</th><th className="px-4 py-2 w-1/4">Impact (Point 10)</th><th className="px-4 py-2">Comment</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Array.isArray(selectedReport.achievements) && selectedReport.achievements.length > 0 ? (selectedReport.achievements.map(a => (
+                        <tr key={a.id} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3 font-medium text-slate-800">{a.description}</td>
+                          <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-50 border border-green-200 text-green-700 uppercase">{a.reason}</span></td>
+                          <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 border border-blue-200 text-blue-700 uppercase">{a.impact || '-'}</span></td>
+                          <td className="px-4 py-3 text-slate-500 text-xs italic">{a.comment || '-'}</td>
+                        </tr>
+                      ))) : (<tr><td colSpan="4" className="px-4 py-6 text-center text-slate-400 italic">No achievements logged.</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section><h4 className="text-xs uppercase font-bold text-red-600 mb-3 flex items-center gap-2"><XCircle size={14}/> Blockers</h4>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                      <tr><th className="px-4 py-2 w-1/3">Description</th><th className="px-4 py-2 w-1/4">Type</th><th className="px-4 py-2 w-1/4">Dependency</th><th className="px-4 py-2">Comment</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Array.isArray(selectedReport.blockers) && selectedReport.blockers.length > 0 ? (selectedReport.blockers.map(b => (
+                        <tr key={b.id} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3 font-medium text-slate-800">{b.description}</td>
+                          <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 border border-red-200 text-red-700 uppercase">{b.type}</span></td>
+                          <td className="px-4 py-3 text-xs text-slate-700 font-medium">{b.blockedBy ? <span className="flex items-center gap-1"><AlertTriangle size={10} className="text-orange-500"/> {b.blockedBy}</span> : '-'}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs italic">{b.comment || '-'}</td>
+                        </tr>
+                      ))) : (<tr><td colSpan="4" className="px-4 py-6 text-center text-slate-400 italic">No blockers logged.</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {/* Metrics & Comments (Same as before) */}
+              {(selectedReport.manualMetrics || []).length > 0 && (<section><h4 className="text-xs uppercase font-bold text-slate-400 mb-3 flex items-center gap-2"><BarChart3 size={14}/> Key Metrics</h4><div className="grid grid-cols-3 gap-3">{selectedReport.manualMetrics.map((m, i) => (<div key={i} className="bg-white p-3 rounded border border-slate-200 text-center shadow-sm"><div className="text-[10px] uppercase text-slate-400 font-bold mb-1">{m.label}</div><div className="font-bold text-lg text-slate-800">{m.value}</div></div>))}</div></section>)}{(selectedReport.nextWeekGoals || []).length > 0 && (<section><h4 className="text-xs uppercase font-bold text-purple-600 mb-3 flex items-center gap-2"><ListTodo size={14}/> Next Week's Plan</h4><ul className="space-y-2">{selectedReport.nextWeekGoals.map(g => (<li key={g.id} className="text-sm p-2 bg-purple-50 border border-purple-100 rounded flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>{g.text}</li>))}</ul></section>)}<div className="pt-6 mt-6 border-t border-slate-100 sticky bottom-0 bg-white pb-6 -mb-6"><h4 className="text-xs uppercase font-bold text-purple-600 mb-3 flex items-center gap-2"><MessageSquare size={14}/> CEO Feedback Thread</h4><CommentThread comments={selectedReport.comments} onAdd={(text) => onAddComment(selectedReport.id, text, 'CEO')} /></div></>)}</div></div></>)}</div></div>
+          );
+        }
+
+        // ... AdminView (Same) ...
+        function AdminView({ departments, setDepartments, templates, setTemplates, dropdowns, setDropdowns, vendors, setVendors, metricTemplates, setMetricTemplates }) {
+          const [activeTab, setActiveTab] = useState('templates'); 
+          const [selectedDeptId, setSelectedDeptId] = useState(departments[0]?.id);
+          const currentTemplates = templates[selectedDeptId] || [];
+          const handleAddTemplate = () => { const newTemplate = { id: Math.random().toString(), title: 'New KPI Goal', target: 'Target Value', targetDate: '2023-12-31', createdAt: new Date().toISOString().split('T')[0] }; setTemplates({ ...templates, [selectedDeptId]: [...currentTemplates, newTemplate] }); };
+          const deleteTemplate = (id) => { const updatedList = currentTemplates.filter(t => t.id !== id); setTemplates({ ...templates, [selectedDeptId]: updatedList }); };
+          const updateTemplate = (id, field, value) => { const updatedList = currentTemplates.map(t => t.id === id ? { ...t, [field]: value } : t); setTemplates({ ...templates, [selectedDeptId]: updatedList }); };
+          const [newVendorName, setNewVendorName] = useState('');
+          const handleAddVendor = () => { if(newVendorName) { setVendors([...vendors, { id: Math.random().toString(), name: newVendorName }]); setNewVendorName(''); } };
+
+          return (
+            <div className="p-8 max-w-4xl mx-auto">
+              <header className="mb-8"><h2 className="text-2xl font-bold text-slate-800">System Configuration</h2><p className="text-slate-500">Manage Departments, Templates, and Dropdowns</p></header>
+              <div className="flex gap-1 bg-slate-200 p-1 rounded-lg inline-flex mb-8"><button onClick={() => setActiveTab('departments')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'departments' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Departments</button><button onClick={() => setActiveTab('vendors')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'vendors' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Vendors</button><button onClick={() => setActiveTab('templates')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'templates' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>KPI Templates</button><button onClick={() => setActiveTab('dropdowns')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'dropdowns' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Dropdowns</button></div>
+              {activeTab === 'departments' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Department Management</h3><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Manager Email</th></tr></thead><tbody>{departments.map(d => (<tr key={d.id} className="border-b border-slate-50"><td className="px-4 py-3">{d.name}</td><td className="px-4 py-3 text-slate-500">{d.manager}</td></tr>))}</tbody></table></div>)}
+              {activeTab === 'vendors' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Vendor Management</h3><div className="flex gap-2 mb-6 max-w-md"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="New Vendor Name..." value={newVendorName} onChange={e => setNewVendorName(e.target.value)} /><button onClick={handleAddVendor} className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold">Add</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200"><tr><th className="px-4 py-2">Vendor Name</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>{vendors.map(v => (<tr key={v.id} className="border-b border-slate-50"><td className="px-4 py-3">{v.name}</td><td className="px-4 py-3 text-right text-slate-400 hover:text-red-500 cursor-pointer">Delete</td></tr>))}</tbody></table></div>)}
+              {activeTab === 'templates' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold text-slate-800">KPI Templates</h3><select className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm font-bold" value={selectedDeptId} onChange={e => setSelectedDeptId(e.target.value)}>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="space-y-3">{currentTemplates.map(t => (<div key={t.id} className="grid grid-cols-12 gap-4 items-center px-3 py-3 border border-slate-200 rounded bg-slate-50"><div className="col-span-4"><input className="w-full text-sm bg-transparent font-medium" value={t.title} onChange={e => updateTemplate(t.id, 'title', e.target.value)} /></div><div className="col-span-3"><input className="w-full text-sm bg-transparent" value={t.target} onChange={e => updateTemplate(t.id, 'target', e.target.value)} /></div><div className="col-span-3"><input type="date" className="w-full text-sm bg-transparent" value={t.targetDate} onChange={e => updateTemplate(t.id, 'targetDate', e.target.value)} /></div><div className="col-span-2 text-right"><button onClick={() => deleteTemplate(t.id)}><Trash2 size={16} className="text-slate-400 hover:text-red-500"/></button></div></div>))}</div><button onClick={handleAddTemplate} className="mt-4 text-sm text-blue-600 font-medium flex items-center gap-1">+ Add KPI</button></div>)}
+              {activeTab === 'dropdowns' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Achievement Reasons</h3><div className="flex flex-wrap gap-2 mb-6">{dropdowns.achievement_reason.map(r => (<span key={r} className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-medium border border-green-200">{r}</span>))}</div></div>)}
+            </div>
+          );
+        }
+
+        // ... Utils ...
+        function SidebarItem({ icon, label, active, onClick }) { return (<button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm font-medium ${active ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>{icon} {label}</button>); }
+        function MultiSelect({ options, selected, onChange, placeholder }) { const [isOpen, setIsOpen] = useState(false); const toggleOption = (value) => { if (selected.includes(value)) onChange(selected.filter(item => item !== value)); else onChange([...selected, value]); }; return (<div className="relative"><div className="w-full border border-slate-300 rounded-md text-sm p-2 bg-white min-h-[38px] cursor-pointer flex flex-wrap gap-1 items-center focus:ring-1 focus:ring-blue-500" onClick={() => setIsOpen(!isOpen)}>{selected.length === 0 && <span className="text-slate-400 italic">{placeholder}</span>}{selected.map(item => (<span key={item} className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">{item} <span className="hover:text-red-950 font-bold px-0.5" onClick={(e) => { e.stopPropagation(); toggleOption(item); }}>×</span></span>))}<div className="ml-auto text-slate-400"><ChevronDown size={14} /></div></div>{isOpen && (<><div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} /><div className="absolute z-20 w-full bg-white border border-slate-200 shadow-xl rounded-md mt-1 max-h-48 overflow-auto animate-in fade-in zoom-in-95 duration-100">{options.map(opt => (<div key={opt.value} className="p-2 hover:bg-slate-50 cursor-pointer flex items-center gap-2 text-sm border-b border-slate-50 last:border-none text-slate-700" onClick={() => toggleOption(opt.value)}><div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selected.includes(opt.value) ? 'bg-red-500 border-red-500' : 'border-slate-300'}`}>{selected.includes(opt.value) && <CheckCircle2 size={10} className="text-white" />}</div>{opt.label}</div>))}</div></>)}</div>); }
+        function StatCard({ title, value, sub, color, icon }) { const colors = { blue: "border-l-blue-500", red: "border-l-red-500", orange: "border-l-orange-500", green: "border-l-green-500" }; return (<div className={`bg-white p-5 rounded-lg border border-slate-200 shadow-sm border-l-4 ${colors[color] || colors.blue}`}><div className="flex justify-between items-start mb-2"><h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider">{title}</h4>{icon}</div><div className="text-2xl font-bold text-slate-800">{value}</div><div className="text-xs text-slate-400 mt-1">{sub}</div></div>); }
+        function StatusBadge({ status }) { const styles = { 'On Track': 'bg-green-100 text-green-700', 'At Risk': 'bg-yellow-100 text-yellow-700', 'Off Track': 'bg-red-100 text-red-700', 'Completed': 'bg-green-100 text-green-700', 'Not Completed': 'bg-red-100 text-red-700', 'Planned': 'bg-blue-100 text-blue-700' }; return (<span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${styles[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>); }
+        function CommentThread({ comments = [], onAdd }) { const [text, setText] = useState(''); const handleSend = () => { if (!text.trim()) return; onAdd(text); setText(''); }; return (<div className="bg-slate-50 rounded-lg border border-slate-200 flex flex-col h-[300px]"><div className="flex-1 overflow-auto p-4 space-y-4">{comments.length === 0 && <div className="text-center text-slate-400 text-sm mt-10">No comments yet. Start the thread.</div>}{comments.map((c) => { const isCEO = c.role === 'CEO'; return (<div key={c.id} className={`flex flex-col ${isCEO ? 'items-end' : 'items-start'}`}><div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm ${isCEO ? 'bg-purple-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'}`}>{c.text}</div><div className="flex items-center gap-1 mt-1 px-1"><span className="text-[10px] font-bold text-slate-500 uppercase">{c.author}</span><span className="text-[10px] text-slate-400">• {c.timestamp}</span></div></div>); })}</div><div className="p-3 bg-white border-t border-slate-200 rounded-b-lg flex gap-2"><input className="flex-1 text-sm border border-slate-200 rounded-full px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Write a reply..." value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} /><button onClick={handleSend} className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-full transition-colors flex items-center justify-center shadow-sm"><Send size={16} className="ml-0.5" /></button></div></div>); }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

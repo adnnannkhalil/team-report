@@ -63,14 +63,15 @@
             Send: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
             Cloud: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17.5 19c0-3.037-2.463-5.5-5.5-5.5S6.5 15.963 6.5 19"/><path d="M20 19c0-3.59-2.686-6.5-6-6.5S8 15.41 8 19"/><path d="M13 10V3"/><path d="M13 3L9 7"/><path d="M13 3l4 4"/></svg>,
             Loader2: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
-            TrendingUp: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            TrendingUp: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+            Filter: ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
         };
 
         const { 
             LayoutDashboard, PenTool, Settings, CheckCircle2, XCircle, Plus, Save, 
             User, ArrowRight, BarChart3, Trash2, ChevronDown, Calendar, Target, 
             ShieldCheck, AlertCircle, Building2, MessageSquare, AlertTriangle, 
-            Clock, ListTodo, Send, Cloud, Loader2, TrendingUp
+            Clock, ListTodo, Send, Cloud, Loader2, TrendingUp, Filter
         } = Icons;
 
         // --- APP CODE ---
@@ -160,6 +161,8 @@
           { id: 'g3', deptId: 'd1', description: 'Past Goal 1', status: 'Completed', plannedDate: '2023-11-13', reason: 'Ahead of Schedule', blockingTeams: [], comment: '' },
           { id: 'g4', deptId: 'd1', description: 'Past Goal 2', status: 'Completed', plannedDate: '2023-11-13', reason: 'On Schedule', blockingTeams: [], comment: '' },
           { id: 'g5', deptId: 'd1', description: 'Past Goal 3', status: 'Not Completed', plannedDate: '2023-11-13', reason: 'Resource Constrained', blockingTeams: [], comment: '' },
+          { id: 'g6', deptId: 'd2', description: 'API Refactor', status: 'Not Completed', plannedDate: '2023-11-20', reason: 'Technical limitation', blockingTeams: [], comment: 'Legacy code issues' },
+          { id: 'g7', deptId: 'd2', description: 'Server Migration', status: 'Completed', plannedDate: '2023-11-20', reason: 'On Schedule', blockingTeams: [], comment: '' }
         ];
 
         const INITIAL_REPORTS = [
@@ -267,7 +270,7 @@
                   />
                 )}
                 {activeView === 'ceo' && <CEODashboard departments={departments} reports={reports} goals={goals} onAddComment={addComment} />}
-                {activeView === 'insights' && <InsightsView departments={departments} reports={reports} goals={goals} />}
+                {activeView === 'insights' && <InsightsView departments={departments} reports={reports} goals={goals} vendors={vendors} />}
                 {activeView === 'admin' && <AdminView departments={departments} setDepartments={setDepartments} templates={templates} setTemplates={setTemplates} dropdowns={dropdowns} setDropdowns={setDropdowns} vendors={vendors} setVendors={setVendors} metricTemplates={metricTemplates} setMetricTemplates={setMetricTemplates} />}
               </main>
             </div>
@@ -448,74 +451,206 @@
           );
         }
 
-        // --- NEW: INSIGHTS VIEW (Analytics) ---
-        function InsightsView({ departments, reports, goals }) {
-            const [selectedDateRange, setSelectedDateRange] = useState('All Time');
+        // --- NEW: INSIGHTS VIEW (Analytics) - Updated Filters ---
+        function InsightsView({ departments, reports, goals, vendors }) {
+            const [selectedDateRange, setSelectedDateRange] = useState({ start: '2023-11-01', end: '2023-11-30' });
+            const [selectedTeams, setSelectedTeams] = useState([]); // Multi-select filter
+            // New Filter for Point 2: View Mode (Affects vs Affected By)
+            const [viewMode, setViewMode] = useState('impact'); // 'impact' (Unique Affects) or 'blocker' (Affected/Caused By)
             
-            // Mock aggregations based on 'goals' and 'reports'
-            // In a real app, these would be backend queries
+            // Stats Calculation
+            const filteredGoals = goals.filter(g => {
+                if (selectedTeams.length > 0 && !selectedTeams.includes(g.deptId)) return false;
+                if (g.plannedDate < selectedDateRange.start || g.plannedDate > selectedDateRange.end) return false;
+                return true;
+            });
             
-            // 1. Success Analysis (Goals Completed + Additional Achievements)
-            const completedGoals = goals.filter(g => g.status === 'Completed');
-            // Mock additional achievements from all reports
-            const allAchievements = reports.flatMap(r => r.achievements || []);
-            
-            // Aggregate Reasons for Success
-            const successReasons = {};
-            completedGoals.forEach(g => { successReasons[g.reason] = (successReasons[g.reason] || 0) + 1; });
-            allAchievements.forEach(a => { successReasons[a.reason] = (successReasons[a.reason] || 0) + 1; });
+            const filteredReports = reports.filter(r => {
+                 if (selectedTeams.length > 0 && !selectedTeams.includes(r.deptId)) return false;
+                 return true;
+            });
 
-            // 2. Failure Analysis (Goals Not Completed)
-            const failedGoals = goals.filter(g => g.status === 'Not Completed');
-            const failureReasons = {};
-            failedGoals.forEach(g => { failureReasons[g.reason] = (failureReasons[g.reason] || 0) + 1; });
+            // 1. Success Analysis 
+            const completedGoals = filteredGoals.filter(g => g.status === 'Completed');
+            const allAchievements = filteredReports.flatMap(r => r.achievements || []);
+            const totalSuccess = viewMode === 'impact' ? allAchievements.length : (completedGoals.length + allAchievements.length);
             
-            const totalSuccess = completedGoals.length + allAchievements.length;
+            const successImpacts = {};
+            if (viewMode === 'impact') {
+                allAchievements.forEach(a => { const key = a.impact || 'Uncategorized'; successImpacts[key] = (successImpacts[key] || 0) + 1; });
+            } else {
+                completedGoals.forEach(g => { successImpacts[g.reason] = (successImpacts[g.reason] || 0) + 1; });
+                allAchievements.forEach(a => { successImpacts[a.reason] = (successImpacts[a.reason] || 0) + 1; });
+            }
+
+            // 2. Failure Analysis
+            const failedGoals = filteredGoals.filter(g => g.status === 'Not Completed');
             const totalFailure = failedGoals.length;
+            const failureSubReasons = {}; 
+            
+            failedGoals.forEach(g => { 
+                if (viewMode === 'blocker') {
+                     if (g.blockingTeams && g.blockingTeams.length > 0) {
+                         g.blockingTeams.forEach(team => { const key = `${team.label} (Blocking)`; failureSubReasons[key] = (failureSubReasons[key] || 0) + 1; });
+                     } else {
+                         const key = `${g.reason} (No specific team)`; failureSubReasons[key] = (failureSubReasons[key] || 0) + 1;
+                     }
+                } else {
+                     if (g.blockingTeams && g.blockingTeams.length > 0) {
+                         g.blockingTeams.forEach(team => { const key = `${g.reason} -> ${team.label}`; failureSubReasons[key] = (failureSubReasons[key] || 0) + 1; });
+                     } else {
+                         const key = g.reason; failureSubReasons[key] = (failureSubReasons[key] || 0) + 1;
+                     }
+                }
+            });
+            
+            const successRate = totalSuccess + totalFailure > 0 ? Math.round((totalSuccess / (totalSuccess + totalFailure)) * 100) : 0;
+            // Simple logic to find top blocker
+            let topBlocker = 'None';
+            let maxCount = 0;
+            for(const reason in failureSubReasons) {
+                if(failureSubReasons[reason] > maxCount) { maxCount = failureSubReasons[reason]; topBlocker = reason; }
+            }
+
+            const toggleTeam = (id) => {
+                if (selectedTeams.includes(id)) setSelectedTeams(selectedTeams.filter(t => t !== id));
+                else setSelectedTeams([...selectedTeams, id]);
+            };
+
+            // Global Filter Logic for Cards: If NO teams selected, show Company-wide averages. If teams selected, filter cards by them.
+            // (Already handled by `filteredGoals` and `filteredReports` logic above)
 
             return (
-                <div className="p-8 max-w-full mx-auto space-y-8">
-                    <header className="flex justify-between items-center mb-8">
-                        <div><h2 className="text-2xl font-bold text-slate-800">Insights & Trends</h2><p className="text-slate-500">Analyze performance factors over time.</p></div>
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm"><Calendar size={16} className="text-slate-400" /><span className="text-xs font-bold uppercase text-slate-400">Timeframe</span><select className="text-sm font-bold text-slate-800 bg-transparent outline-none cursor-pointer" value={selectedDateRange} onChange={(e) => setSelectedDateRange(e.target.value)}><option>Last 30 Days</option><option>Last Quarter</option><option>All Time</option></select></div>
+                <div className="p-8 max-w-full mx-auto space-y-8 bg-slate-50 min-h-screen">
+                    
+                    {/* GLOBAL FILTER BAR (Moved to Top) */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 items-center sticky top-4 z-30 mb-8">
+                         
+                         {/* Team Filter */}
+                         <div className="relative group z-30">
+                            <button className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 transition-colors">
+                                <Filter size={16}/> {selectedTeams.length > 0 ? `${selectedTeams.length} Teams Selected` : 'All Teams'} <ChevronDown size={14}/>
+                            </button>
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-3 hidden group-hover:block">
+                                <div className="text-xs font-bold text-slate-400 uppercase mb-2 px-2">Select Teams</div>
+                                {departments.map(d => (
+                                    <label key={d.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
+                                        <input type="checkbox" checked={selectedTeams.includes(d.id)} onChange={() => toggleTeam(d.id)} className="rounded text-blue-600 focus:ring-blue-500"/>
+                                        <span className="text-sm font-medium text-slate-700">{d.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                         </div>
+
+                         {/* Date Range Picker */}
+                         <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+                             <span className="text-xs font-bold text-slate-400 uppercase">Date Range</span>
+                             <input type="date" className="bg-transparent text-sm font-semibold text-slate-700 outline-none cursor-pointer" value={selectedDateRange.start} onChange={e => setSelectedDateRange({...selectedDateRange, start: e.target.value})} />
+                             <span className="text-slate-300">to</span>
+                             <input type="date" className="bg-transparent text-sm font-semibold text-slate-700 outline-none cursor-pointer" value={selectedDateRange.end} onChange={e => setSelectedDateRange({...selectedDateRange, end: e.target.value})} />
+                         </div>
+
+                         {/* View Mode Toggle (Contextual, kept on right) */}
+                         <div className="ml-auto flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+                             <button onClick={() => setViewMode('impact')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'impact' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Unique Affects (Impact)</button>
+                             <button onClick={() => setViewMode('blocker')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'blocker' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Affected / Caused By</button>
+                         </div>
+                    </div>
+                    
+                    <header className="mb-4">
+                        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Performance Insights</h2>
+                        <p className="text-slate-500 mt-1">Analyze trends, bottlenecks, and success factors across the organization.</p>
                     </header>
+
+                    {/* Summary Cards Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between relative group">
+                            <div>
+                                <div className="text-sm font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">Total Logged Items <AlertCircle size={12} className="text-slate-300 cursor-help"/></div>
+                                <div className="text-3xl font-bold text-slate-800 mt-1">{totalSuccess + totalFailure}</div>
+                            </div>
+                            <div className="bg-blue-50 p-3 rounded-full text-blue-600"><ListTodo size={24}/></div>
+                            {/* Tooltip */}
+                            <div className="absolute top-full left-0 mt-2 p-2 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 w-48">Includes Planned Goals + Unplanned Achievements</div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div><div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Success Rate</div><div className="text-3xl font-bold text-green-600 mt-1">{successRate}%</div></div>
+                            <div className="bg-green-50 p-3 rounded-full text-green-600"><TrendingUp size={24}/></div>
+                        </div>
+                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div><div className="text-sm font-bold text-slate-500 uppercase tracking-wide">Top Blocker</div><div className="text-lg font-bold text-red-600 mt-1 truncate max-w-[200px]" title={topBlocker}>{topBlocker}</div></div>
+                            <div className="bg-red-50 p-3 rounded-full text-red-600"><AlertTriangle size={24}/></div>
+                        </div>
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* SUCCESS ANALYSIS */}
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                            <h3 className="text-lg font-bold text-green-700 mb-6 flex items-center gap-2"><CheckCircle2 size={20}/> Success Analysis <span className="text-sm font-normal text-slate-400 ml-auto">{totalSuccess} Items</span></h3>
-                            
-                            {/* Simple Bar Chart Visualization using HTML/CSS */}
-                            <div className="space-y-4">
-                                {Object.keys(successReasons).map(reason => {
-                                    const count = successReasons[reason];
-                                    const pct = Math.round((count / totalSuccess) * 100) || 0;
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="text-lg font-bold text-green-700 flex items-center gap-2"><CheckCircle2 size={20}/> Success Analysis</h3>
+                                <p className="text-xs text-slate-500 mt-1">{viewMode === 'impact' ? 'Categorized by Impact (Unique Affects)' : 'Categorized by Reason (Caused By)'}</p>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                {Object.keys(successImpacts).map((key, idx) => {
+                                    const count = successImpacts[key];
+                                    const pct = Math.round((count / (totalSuccess || 1)) * 100) || 0;
                                     return (
-                                        <div key={reason}>
-                                            <div className="flex justify-between text-sm mb-1"><span className="font-medium text-slate-700">{reason}</span><span className="text-slate-500">{count} ({pct}%)</span></div>
-                                            <div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${pct}%` }}></div></div>
+                                        <div key={key}>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="font-bold text-sm text-slate-700">{key}</span>
+                                                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{count} ({pct}%)</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                                <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                                            </div>
                                         </div>
                                     )
                                 })}
-                                {totalSuccess === 0 && <div className="text-center text-slate-400 italic">No data available for this period.</div>}
+                                {totalSuccess === 0 && <div className="text-center py-10 text-slate-400 italic">No success data found for this period.</div>}
                             </div>
                         </div>
 
-                        {/* FAILURE ANALYSIS */}
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                            <h3 className="text-lg font-bold text-red-700 mb-6 flex items-center gap-2"><XCircle size={20}/> Delay Analysis <span className="text-sm font-normal text-slate-400 ml-auto">{totalFailure} Items</span></h3>
-                             <div className="space-y-4">
-                                {Object.keys(failureReasons).map(reason => {
-                                    const count = failureReasons[reason];
-                                    const pct = Math.round((count / totalFailure) * 100) || 0;
-                                    return (
-                                        <div key={reason}>
-                                            <div className="flex justify-between text-sm mb-1"><span className="font-medium text-slate-700">{reason}</span><span className="text-slate-500">{count} ({pct}%)</span></div>
-                                            <div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-red-500 h-2.5 rounded-full" style={{ width: `${pct}%` }}></div></div>
-                                        </div>
-                                    )
-                                })}
-                                {totalFailure === 0 && <div className="text-center text-slate-400 italic">No data available for this period.</div>}
+                        {/* FAILURE ANALYSIS (Drill Down) */}
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="text-lg font-bold text-red-700 flex items-center gap-2"><XCircle size={20}/> Delay Breakdown</h3>
+                                <p className="text-xs text-slate-500 mt-1">{viewMode === 'impact' ? 'Drilldown: Reason -> Specific Detail' : 'Grouped by Causing Entity'}</p>
+                            </div>
+                             <div className="p-0 overflow-auto h-[400px] custom-scrollbar">
+                                {totalFailure === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 italic">No delay data found.</div>
+                                ) : (
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                                            <tr><th className="px-6 py-3">Reason / Entity</th><th className="px-6 py-3 w-24 text-right">Count</th><th className="px-6 py-3 w-32">Impact</th></tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {Object.keys(failureSubReasons).map((subReason, idx) => {
+                                                const count = failureSubReasons[subReason];
+                                                const pct = Math.round((count / totalFailure) * 100) || 0;
+                                                const parts = subReason.includes('->') ? subReason.split(' -> ') : [subReason, ''];
+                                                const main = parts[0];
+                                                const sub = parts[1];
+
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-50/50">
+                                                        <td className="px-6 py-4">
+                                                            <div className="font-bold text-slate-700 text-base">{main}</div>
+                                                            {sub && <div className="text-xs text-slate-500 mt-1 flex items-center gap-1 font-medium bg-red-50 text-red-700 px-2 py-0.5 rounded w-fit border border-red-100"><AlertTriangle size={10}/> {sub}</div>}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-800">{count}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="w-full bg-slate-100 rounded-full h-2">
+                                                                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${pct}%` }}></div>
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400 mt-1 text-right">{pct}% of delays</div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -548,7 +683,7 @@
           );
         }
 
-        // --- AdminView & Utils (Same) ---
+        // --- AdminView & Utils (Standard) ---
         function AdminView({ departments, setDepartments, templates, setTemplates, dropdowns, setDropdowns, vendors, setVendors, metricTemplates, setMetricTemplates }) { const [activeTab, setActiveTab] = useState('templates'); const [selectedDeptId, setSelectedDeptId] = useState(departments[0]?.id); const currentTemplates = templates[selectedDeptId] || []; const handleAddTemplate = () => { const newTemplate = { id: Math.random().toString(), title: 'New KPI Goal', target: 'Target Value', targetDate: '2023-12-31', createdAt: new Date().toISOString().split('T')[0] }; setTemplates({ ...templates, [selectedDeptId]: [...currentTemplates, newTemplate] }); }; const deleteTemplate = (id) => { const updatedList = currentTemplates.filter(t => t.id !== id); setTemplates({ ...templates, [selectedDeptId]: updatedList }); }; const updateTemplate = (id, field, value) => { const updatedList = currentTemplates.map(t => t.id === id ? { ...t, [field]: value } : t); setTemplates({ ...templates, [selectedDeptId]: updatedList }); }; const [newVendorName, setNewVendorName] = useState(''); const handleAddVendor = () => { if(newVendorName) { setVendors([...vendors, { id: Math.random().toString(), name: newVendorName }]); setNewVendorName(''); } }; return (<div className="p-8 max-w-full mx-auto"><header className="mb-8"><h2 className="text-2xl font-bold text-slate-800">System Configuration</h2><p className="text-slate-500">Manage Departments, Templates, and Dropdowns</p></header><div className="flex gap-1 bg-slate-200 p-1 rounded-lg inline-flex mb-8"><button onClick={() => setActiveTab('departments')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'departments' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Departments</button><button onClick={() => setActiveTab('vendors')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'vendors' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Vendors</button><button onClick={() => setActiveTab('templates')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'templates' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>KPI Templates</button><button onClick={() => setActiveTab('dropdowns')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'dropdowns' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Dropdowns</button></div>{activeTab === 'departments' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Department Management</h3><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Manager Email</th></tr></thead><tbody>{departments.map(d => (<tr key={d.id} className="border-b border-slate-50"><td className="px-4 py-3">{d.name}</td><td className="px-4 py-3 text-slate-500">{d.manager}</td></tr>))}</tbody></table></div>)}{activeTab === 'vendors' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Vendor Management</h3><div className="flex gap-2 mb-6 max-w-md"><input className="flex-1 border rounded px-3 py-2 text-sm" placeholder="New Vendor Name..." value={newVendorName} onChange={e => setNewVendorName(e.target.value)} /><button onClick={handleAddVendor} className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold">Add</button></div><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200"><tr><th className="px-4 py-2">Vendor Name</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>{vendors.map(v => (<tr key={v.id} className="border-b border-slate-50"><td className="px-4 py-3">{v.name}</td><td className="px-4 py-3 text-right text-slate-400 hover:text-red-500 cursor-pointer">Delete</td></tr>))}</tbody></table></div>)}{activeTab === 'templates' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold text-slate-800">KPI Templates</h3><select className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm font-bold" value={selectedDeptId} onChange={e => setSelectedDeptId(e.target.value)}>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="space-y-3">{currentTemplates.map(t => (<div key={t.id} className="grid grid-cols-12 gap-4 items-center px-3 py-3 border border-slate-200 rounded bg-slate-50"><div className="col-span-4"><input className="w-full text-sm bg-transparent font-medium" value={t.title} onChange={e => updateTemplate(t.id, 'title', e.target.value)} /></div><div className="col-span-3"><input className="w-full text-sm bg-transparent" value={t.target} onChange={e => updateTemplate(t.id, 'target', e.target.value)} /></div><div className="col-span-3"><input type="date" className="w-full text-sm bg-transparent" value={t.targetDate} onChange={e => updateTemplate(t.id, 'targetDate', e.target.value)} /></div><div className="col-span-2 text-right"><button onClick={() => deleteTemplate(t.id)}><Trash2 size={16} className="text-slate-400 hover:text-red-500"/></button></div></div>))}</div><button onClick={handleAddTemplate} className="mt-4 text-sm text-blue-600 font-medium flex items-center gap-1">+ Add KPI</button></div>)}{activeTab === 'dropdowns' && (<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><h3 className="text-lg font-bold text-slate-800 mb-4">Achievement Reasons</h3><div className="flex flex-wrap gap-2 mb-6">{dropdowns.achievement_reason.map(r => (<span key={r} className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-medium border border-green-200">{r}</span>))}</div></div>)}</div>); }
         function SidebarItem({ icon, label, active, onClick }) { return (<button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm font-medium ${active ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>{icon} {label}</button>); }
         function MultiSelect({ options, selected, onChange, placeholder }) { const [isOpen, setIsOpen] = useState(false); const toggleOption = (value) => { if (selected.includes(value)) onChange(selected.filter(item => item !== value)); else onChange([...selected, value]); }; return (<div className="relative"><div className="w-full border border-slate-300 rounded-md text-sm p-2 bg-white min-h-[38px] cursor-pointer flex flex-wrap gap-1 items-center focus:ring-1 focus:ring-blue-500" onClick={() => setIsOpen(!isOpen)}>{selected.length === 0 && <span className="text-slate-400 italic">{placeholder}</span>}{selected.map(item => (<span key={item} className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">{item} <span className="hover:text-red-950 font-bold px-0.5" onClick={(e) => { e.stopPropagation(); toggleOption(item); }}>×</span></span>))}<div className="ml-auto text-slate-400"><ChevronDown size={14} /></div></div>{isOpen && (<><div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} /><div className="absolute z-20 w-full bg-white border border-slate-200 shadow-xl rounded-md mt-1 max-h-48 overflow-auto animate-in fade-in zoom-in-95 duration-100">{options.map(opt => (<div key={opt.value} className="p-2 hover:bg-slate-50 cursor-pointer flex items-center gap-2 text-sm border-b border-slate-50 last:border-none text-slate-700" onClick={() => toggleOption(opt.value)}><div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selected.includes(opt.value) ? 'bg-red-500 border-red-500' : 'border-slate-300'}`}>{selected.includes(opt.value) && <CheckCircle2 size={10} className="text-white" />}</div>{opt.label}</div>))}</div></>)}</div>); }
